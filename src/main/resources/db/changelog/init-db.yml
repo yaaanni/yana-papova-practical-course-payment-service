@@ -1,0 +1,52 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-collection
+      author: yana
+      changes:
+        - createCollection:
+            collectionName: payments
+            options: |
+              {
+                validator: {
+                  $jsonSchema: {
+                    bsonType: "object",
+                    required: ["order_id", "user_id", "status", "createdAt", "updatedAt", "payment_amount"],
+                    properties: {
+                      order_id: {
+                        bsonType: "long"
+                      },
+                      user_id: {
+                        bsonType: "long"
+                      },
+                      status: {
+                        bsonType: "string"
+                      },
+                      createdAt: {
+                        bsonType: "date"
+                      },
+                      updatedAt: {
+                        bsonType: "date"
+                      },
+                      payment_amount: {
+                        bsonType: "decimal"
+                      }
+                    }
+                  }
+                },
+                validationAction: "error",
+                validationLevel: "strict"
+              }
+
+        - createIndex:
+            collectionName: payments
+            keys: |
+              { order_id: 1}
+            options: |
+              { name: "i_order_id"}
+
+        - createIndex:
+            collectionName: payments
+            keys: |
+              { user_id: 1}
+            options: |
+              { name: "i_user_id"}
