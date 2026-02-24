@@ -1,0 +1,39 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-outbox
+      author: yana
+      changes:
+        - createCollection:
+            collectionName: outbox
+            options: |
+              {
+                validator: {
+                  $jsonSchema: {
+                    bsonType: "object",
+                    required: ["event_type", "payload", "status", "createdAt"],
+                    properties: {
+                      event_type: {
+                        bsonType: "string"
+                      },
+                      payload: {
+                        bsonType: "object"
+                      },
+                      status: {
+                        bsonType: "string"
+                      },
+                      createdAt: {
+                        bsonType: "date"
+                      }
+                    }
+                  }
+                },
+                validationAction: "error",
+                validationLevel: "strict"
+              }
+
+        - createIndex:
+            collectionName: outbox
+            keys: |
+              { status: 1, createdAt: 1}
+            options: |
+              { name: "i_status_createdAt"}

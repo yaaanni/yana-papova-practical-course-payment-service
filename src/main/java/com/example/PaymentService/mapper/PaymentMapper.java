@@ -1,7 +1,7 @@
 package com.example.PaymentService.mapper;
 
-import com.example.PaymentService.dto.PaymentRequest;
-import com.example.PaymentService.dto.PaymentResponse;
+import com.example.PaymentService.dto.payment.PaymentRequest;
+import com.example.PaymentService.dto.payment.PaymentResponse;
 import com.example.PaymentService.entity.Payment;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;

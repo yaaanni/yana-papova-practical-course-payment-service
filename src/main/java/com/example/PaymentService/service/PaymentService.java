@@ -1,22 +1,26 @@
 package com.example.PaymentService.service;
 
 import com.example.PaymentService.client.PaymentClient;
-import com.example.PaymentService.dto.PaymentRequest;
-import com.example.PaymentService.dto.PaymentResponse;
+import com.example.PaymentService.dto.payment.PaymentRequest;
+import com.example.PaymentService.dto.payment.PaymentResponse;
 import com.example.PaymentService.entity.Payment;
 import com.example.PaymentService.enums.Status;
 import com.example.PaymentService.exception.IllegalStatusException;
-import com.example.PaymentService.kafka.event.PaymentCreatedEvent;
-import com.example.PaymentService.kafka.producer.PaymentProducer;
+import com.example.PaymentService.kafka.dto.OutboxRequest;
+import com.example.PaymentService.kafka.service.OutboxService;
 import com.example.PaymentService.mapper.PaymentMapper;
 import com.example.PaymentService.repository.PaymentRepository;
+import com.example.PaymentService.security.model.AuthUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -25,13 +29,11 @@ public class PaymentService {
     private final PaymentClient paymentClient;
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
-    private final PaymentProducer paymentProducer;
+    private final OutboxService outboxService;
 
     @Transactional
     public PaymentResponse create(PaymentRequest request) {
         Integer randomNumber = paymentClient.getRandomNumber();
-
-        System.out.println("random number: " + randomNumber);
 
         Payment payment = paymentMapper.toEntity(request);
 
@@ -43,21 +45,39 @@ public class PaymentService {
 
         Payment saved = paymentRepository.save(payment);
 
-        PaymentCreatedEvent event = new PaymentCreatedEvent(saved.getId(), saved.getStatus().name());
+        OutboxRequest event = new OutboxRequest();
+        event.setEventType("CREATE_PAYMENT");
+        event.setStatus("NEW");
+        event.setPayload(Map.of(
+                "paymentAmount", saved.getPaymentAmount(),
+                "userId", saved.getUserId(),
+                "orderId", saved.getOrderId(),
+                "paymentStatus", payment.getStatus().name()
+        ));
 
-        paymentProducer.sendPaymentCreatedEvent(event);
+
+        outboxService.create(event);
 
         return paymentMapper.toResponse(saved);
     }
 
-    public List<PaymentResponse> search(Long userId, Long orderId, String status) {
+    public List<PaymentResponse> search(Long userId, Long orderId, String status, AuthUser authUser) {
         Status enumStatus = null;
         if (status != null) {
             try {
                 enumStatus = Status.valueOf(status.toUpperCase());
             } catch (IllegalArgumentException ex) {
-                throw new IllegalStatusException("Invalid request status");
+                throw new IllegalStatusException();
             }
+        }
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            userId = authUser.userId();
         }
 
         List<Payment> payments = paymentRepository.search(userId, orderId, enumStatus);
@@ -67,8 +87,17 @@ public class PaymentService {
                 .toList();
     }
 
-    public BigDecimal getTotalPaymentsByUserId(Long id, Instant from, Instant to) {
-        return paymentRepository.getTotalPaymentsByUserId(id, from, to);
+    public BigDecimal getTotalPaymentsByUserId(Long userId, Instant from, Instant to, AuthUser authUser) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            userId = authUser.userId();
+        }
+
+        return paymentRepository.getTotalPaymentsByUserId(userId, from, to);
     }
 
     public BigDecimal getTotalPayments(Instant from, Instant to) {
