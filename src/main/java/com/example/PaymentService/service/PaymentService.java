@@ -6,10 +6,13 @@ import com.example.PaymentService.dto.PaymentResponse;
 import com.example.PaymentService.entity.Payment;
 import com.example.PaymentService.enums.Status;
 import com.example.PaymentService.exception.IllegalStatusException;
+import com.example.PaymentService.kafka.event.PaymentCreatedEvent;
+import com.example.PaymentService.kafka.producer.PaymentProducer;
 import com.example.PaymentService.mapper.PaymentMapper;
 import com.example.PaymentService.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -22,7 +25,9 @@ public class PaymentService {
     private final PaymentClient paymentClient;
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
+    private final PaymentProducer paymentProducer;
 
+    @Transactional
     public PaymentResponse create(PaymentRequest request) {
         Integer randomNumber = paymentClient.getRandomNumber();
 
@@ -37,6 +42,10 @@ public class PaymentService {
         }
 
         Payment saved = paymentRepository.save(payment);
+
+        PaymentCreatedEvent event = new PaymentCreatedEvent(saved.getId(), saved.getStatus().name());
+
+        paymentProducer.sendPaymentCreatedEvent(event);
 
         return paymentMapper.toResponse(saved);
     }
