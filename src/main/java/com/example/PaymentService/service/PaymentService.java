@@ -77,7 +77,7 @@ public class PaymentService {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
         if (!isAdmin) {
-            userId = authUser.userId();
+            userId = authUser.getUserId();
         }
 
         List<Payment> payments = paymentRepository.search(userId, orderId, enumStatus);
@@ -94,7 +94,7 @@ public class PaymentService {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
         if (!isAdmin) {
-            userId = authUser.userId();
+            userId = authUser.getUserId();
         }
 
         return paymentRepository.getTotalPaymentsByUserId(userId, from, to);

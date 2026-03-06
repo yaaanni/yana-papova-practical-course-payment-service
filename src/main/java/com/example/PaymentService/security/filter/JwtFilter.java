@@ -53,7 +53,7 @@ public class JwtFilter extends OncePerRequestFilter {
     private void validateAccessToken(String token) {
         if (!jwtService.validateToken(token) ||
                 !"access".equals(jwtService.extractTokenType(token))) {
-            throw new InvalidTokenException();
+            throw new InvalidTokenException("Invalid token");
         }
     }
 

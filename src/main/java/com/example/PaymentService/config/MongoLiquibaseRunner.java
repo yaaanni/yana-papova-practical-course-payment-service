@@ -5,19 +5,22 @@ import liquibase.Liquibase;
 import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public class MongoLiquibaseRunner {
 
     private static final String CHANGELOG = "db/master.yml";
-    private static final String URL = System.getenv("MONGO_URL");
+    //    private static final String URL = System.getenv("MONGO_URL");
+    @Value("${spring.mongodb.uri}")
+    private String url;
 
     @PostConstruct
     public void runMigrations() {
         try {
             Database database = DatabaseFactory.getInstance()
-                    .openDatabase(URL, null, null, null, new ClassLoaderResourceAccessor());
+                    .openDatabase(url, null, null, null, new ClassLoaderResourceAccessor());
 
             Liquibase liquibase = new Liquibase(
                     CHANGELOG,
@@ -25,7 +28,7 @@ public class MongoLiquibaseRunner {
                     database
             );
 
-            liquibase.update((String)null);
+            liquibase.update((String) null);
 
             System.out.println("MongoDB migrations applied successfully!");
 
