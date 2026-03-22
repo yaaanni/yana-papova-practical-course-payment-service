@@ -1,6 +1,7 @@
 package com.example.PaymentService.client;
 
-import org.springframework.beans.factory.annotation.Qualifier;
+import java.time.Duration;
+import reactor.util.retry.Retry;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -18,6 +19,7 @@ public class PaymentClient {
                 .uri("/integers/?num=1&min=1&max=100&col=1&base=10&format=plain&rnd=new")
                 .retrieve()
                 .bodyToMono(String.class)
+                .retryWhen(Retry.fixedDelay(3, Duration.ofSeconds(2)))
                 .block();
 
         return Integer.parseInt(response.trim());
